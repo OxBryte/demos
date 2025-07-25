@@ -15,6 +15,13 @@ const TBA_PAIRINGS = [
 ]
 
 async function main() {
+
+    const latestBlock = await publicClient.getBlockNumber();
+    
+    // Use latest block as starting point, or adjust as needed
+    const startBlock = latestBlock - 1000n;
+    const endBlock = latestBlock;
+
     const logs = await publicClient.getContractEvents({
         abi: UniswapV4ABI,
         address: UniswapV4PoolManager,
@@ -34,66 +41,97 @@ async function main() {
     }) as PoolKey[]
 
     for (const key of poolKeys) {
-        const pool = await loadData(key);
+      const pool = await loadData(key);
 
-        const currency0Price = pool.currency0Price.toSignificant(6);
-        const currency1Price = pool.currency1Price.toSignificant(6);
+      const currency0Price = pool.currency0Price.toSignificant(6);
+      const currency1Price = pool.currency1Price.toSignificant(6);
 
-        let coinType: string | undefined;
-        let appType = "ZORA";
-        if (key.hooks === "0xd61A675F8a0c67A73DC3B54FB7318B4D91409040") {
-            coinType = "ZORA_CREATOR_COIN"
-        } else if (key.hooks === "0x9ea932730A7787000042e34390B8E435dD839040") {
-            coinType = "ZORA_V4_COIN"
-        }
-        // if it's not a zora coin, skip
-        if (!coinType) continue;
+      let coinType: string | undefined;
+      let appType = "ZORA";
+      if (key.hooks === "0xd61A675F8a0c67A73DC3B54FB7318B4D91409040") {
+        coinType = "ZORA_CREATOR_COIN";
+      } else if (key.hooks === "0x9ea932730A7787000042e34390B8E435dD839040") {
+        coinType = "ZORA_V4_COIN";
+      }
+      // if it's not a zora coin, skip
+      if (!coinType) continue;
 
-        if (TBA_PAIRINGS.includes(pool.currency0.wrapped.address) || TBA_PAIRINGS.includes(pool.currency1.wrapped.address)) {
-            appType = "TBA"
-        }
+      if (
+        TBA_PAIRINGS.includes(pool.currency0.wrapped.address) ||
+        TBA_PAIRINGS.includes(pool.currency1.wrapped.address)
+      ) {
+        appType = "TBA";
+      }
 
-        const priceUpper = TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK)
-        const priceLower = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK)
+      // const priceUpper = TickMath.getSqrtRatioAtTick(TickMath.MAX_TICK)
+      // const priceLower = TickMath.getSqrtRatioAtTick(TickMath.MIN_TICK)
 
+      // const amount0 = SqrtPriceMath.getAmount0Delta(pool.sqrtRatioX96, priceUpper, pool.liquidity, true);
+      // const amount1 = SqrtPriceMath.getAmount1Delta(priceLower, pool.sqrtRatioX96, pool.liquidity, true)
 
-        const amount0 = SqrtPriceMath.getAmount0Delta(pool.sqrtRatioX96, priceUpper, pool.liquidity, true);
-        const amount1 = SqrtPriceMath.getAmount1Delta(priceLower, pool.sqrtRatioX96, pool.liquidity, true)
+      // const amount0HumanReadable = formatUnits(BigInt(amount0.toString()), pool.currency0.decimals);
+      // const amount1HumanReadable = formatUnits(BigInt(amount1.toString()), pool.currency1.decimals);
 
-        const amount0HumanReadable = formatUnits(BigInt(amount0.toString()), pool.currency0.decimals);
-        const amount1HumanReadable = formatUnits(BigInt(amount1.toString()), pool.currency1.decimals);
+      // const metadata = {
+      //     id: pool.poolId,
+      //     key: pool.poolKey,
+      //     currency0: {
+      //         name: pool.currency0.name,
+      //         symbol: pool.currency0.symbol,
+      //         decimals: pool.currency0.decimals,
+      //         address: pool.currency0.wrapped.address,
+      //     },
+      //     currency1: {
+      //         name: pool.currency1.name,
+      //         symbol: pool.currency1.symbol,
+      //         decimals: pool.currency1.decimals,
+      //         address: pool.currency1.wrapped.address,
+      //     },
+      //     sqrtPriceX96: pool.sqrtRatioX96.toString(),
+      //     tick: pool.tickCurrent,
+      //     liquidity: pool.liquidity.toString(),
+      //     liquidityCurrency0: amount0.toString(),
+      //     liquidityCurrency1: amount1.toString(),
+      //     liquidityCurrency0HumanReadable: `${amount0HumanReadable} ${pool.currency0.symbol}`,
+      //     liquidityCurrency1HumanReadable: `${amount1HumanReadable} ${pool.currency1.symbol}`,
+      //     currency0Price,
+      //     currency1Price,
+      //     currency0PriceHumanReadable: `1 ${pool.currency0.symbol} = ${currency0Price} ${pool.currency1.symbol}`,
+      //     currency1PriceHumanReadable: `1 ${pool.currency1.symbol} = ${currency1Price} ${pool.currency0.symbol}`,
+      //     coinType,
+      //     appType
+      // }
 
-        const metadata = {
-            id: pool.poolId,
-            key: pool.poolKey,
-            currency0: {
-                name: pool.currency0.name,
-                symbol: pool.currency0.symbol,
-                decimals: pool.currency0.decimals,
-                address: pool.currency0.wrapped.address,
-            },
-            currency1: {
-                name: pool.currency1.name,
-                symbol: pool.currency1.symbol,
-                decimals: pool.currency1.decimals,
-                address: pool.currency1.wrapped.address,
-            },
-            sqrtPriceX96: pool.sqrtRatioX96.toString(),
-            tick: pool.tickCurrent,
-            liquidity: pool.liquidity.toString(),
-            liquidityCurrency0: amount0.toString(),
-            liquidityCurrency1: amount1.toString(),
-            liquidityCurrency0HumanReadable: `${amount0HumanReadable} ${pool.currency0.symbol}`,
-            liquidityCurrency1HumanReadable: `${amount1HumanReadable} ${pool.currency1.symbol}`,
-            currency0Price,
-            currency1Price,
-            currency0PriceHumanReadable: `1 ${pool.currency0.symbol} = ${currency0Price} ${pool.currency1.symbol}`,
-            currency1PriceHumanReadable: `1 ${pool.currency1.symbol} = ${currency1Price} ${pool.currency0.symbol}`,
-            coinType,
-            appType
-        }
+      // console.log(metadata)
 
-        console.log(metadata)
+      // Determine which currency is not in TBA_PAIRINGS
+      let tokenCurrency;
+      let price;
+
+      if (TBA_PAIRINGS.includes(pool.currency0.wrapped.address)) {
+        // Currency1 is the token we're interested in
+        tokenCurrency = pool.currency1;
+        price = currency1Price; // Price of currency1 in terms of currency0
+      } else {
+        // Currency0 is the token we're interested in
+        tokenCurrency = pool.currency0;
+        price = currency0Price; // Price of currency0 in terms of currency1
+      }
+
+      const metadata = {
+        id: pool.poolId,
+        name: tokenCurrency.name,
+        symbol: tokenCurrency.symbol,
+        decimals: tokenCurrency.decimals,
+        address: tokenCurrency.wrapped.address,
+        tick: pool.tickCurrent,
+        sqrtPriceX96: pool.sqrtRatioX96.toString(),
+        price: price,
+        coinType,
+        appType,
+      };
+
+    //   console.log(metadata);
     }
 }
 
